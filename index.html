@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Mini Game Island</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #0a1628; font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 3rem 1.5rem 2rem; }
+    header { text-align: center; margin-bottom: 2.5rem; display: flex; flex-direction: column; align-items: center; gap: 0.6rem; }
+    .header-row { display: flex; align-items: center; gap: 16px; }
+    .game-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.5rem; width: 100%; max-width: 860px; }
+    .game-tile { background: #111e38; border: 1.5px solid #1e3060; border-radius: 16px; padding: 1.5rem 1.5rem 1.2rem; text-decoration: none; color: #fff; transition: transform 0.18s, border-color 0.18s; display: flex; flex-direction: column; align-items: center; }
+    .game-tile:hover { transform: translateY(-5px); border-color: #4a9eff; }
+    canvas { display: block; image-rendering: pixelated; image-rendering: crisp-edges; }
+    .tile-canvas { margin-bottom: 1rem; }
+    .game-tile h2 { font-size: 1.05rem; font-weight: 700; margin: 0; text-align: center; }
+    footer { margin-top: 3rem; color: #3a5278; font-size: 0.82rem; text-align: center; }
+    footer .heart { color: #e0445a; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="header-row">
+      <canvas id="c-island-l" width="64" height="56"></canvas>
+      <h1 style="color:#fff;font-size:2rem;font-weight:800;letter-spacing:-0.02em;margin:0">Mini Game Island</h1>
+      <canvas id="c-island-r" width="64" height="56"></canvas>
+    </div>
+  </header>
+
+  <div class="game-grid">
+    <a href="/scout-and-fox/" class="game-tile">
+      <canvas class="tile-canvas" id="c-sf" width="160" height="90"></canvas>
+      <h2>The Adventures of Scout and Fox</h2>
+    </a>
+    <a href="/jellyfish-adventures/" class="game-tile">
+      <canvas class="tile-canvas" id="c-jf" width="160" height="90"></canvas>
+      <h2>Jellyfish Adventures</h2>
+    </a>
+  </div>
+
+  <footer>Made by Whimsy Labs with <span class="heart">♥</span> in Lee's Summit for Eloise and Thatcher</footer>
+
+  <script>
+    function drawIsland16(canvasId, flip) {
+      const canvas = document.getElementById(canvasId);
+      const ctx = canvas.getContext('2d');
+      ctx.imageSmoothingEnabled = false;
+      const S = 4;
+      if (flip) { ctx.translate(64, 0); ctx.scale(-1, 1); }
+      const P = {
+        _: null,
+        T: '#5c3310', t: '#7a4520', tb: '#3d2008',
+        G: '#2db82d', g: '#1a8c1a', gl: '#44d444', gd: '#157015', gs: '#8de88d',
+        K: '#5c3a0a', k: '#3d2505',
+        S: '#f0d060', s: '#d4b040', sb: '#b89030', sl: '#fff0a0', ss: '#e8c850',
+        W: '#0898e0', w: '#0070b8', wl: '#40c0f8', wf: '#caf0f8',
+      };
+      const grid = [
+        ['_','_','_','_','_','gl','G','gl','_','_','_','_','_','_','_','_'],
+        ['_','_','_','gl','G','g','G','g','G','gl','_','_','_','_','_','_'],
+        ['_','_','gl','G','g','G','K','G','g','G','gl','_','_','_','_','_'],
+        ['_','_','G','g','G','k','T','k','G','g','G','_','_','_','_','_'],
+        ['_','_','g','G','gl','G','t','G','gl','G','g','_','_','_','_','_'],
+        ['_','_','_','gd','G','g','T','g','G','gd','_','_','_','_','_','_'],
+        ['_','_','_','_','gs','G','t','G','gs','_','_','_','_','_','_','_'],
+        ['_','_','_','_','_','_','T','_','_','_','_','_','_','_','_','_'],
+        ['_','_','_','_','_','_','t','_','_','_','_','_','_','_','_','_'],
+        ['_','sl','S','sl','S','sl','tb','sl','S','sl','S','sl','S','sl','S','_'],
+        ['sl','S','ss','S','ss','S','ss','S','ss','S','ss','S','ss','S','ss','sl'],
+        ['S','sb','S','sb','S','sb','S','sb','S','sb','S','sb','S','sb','S','sb'],
+        ['wl','W','wl','W','wf','W','wl','W','wl','W','wl','W','wl','W','wl','W'],
+        ['w','W','w','W','w','W','w','W','w','W','w','W','w','W','w','W'],
+      ];
+      grid.forEach((row, y) => {
+        row.forEach((code, x) => {
+          const color = P[code];
+          if (!color) return;
+          ctx.fillStyle = color;
+          ctx.fillRect(x * S, y * S, S, S);
+        });
+      });
+      ctx.fillStyle = P.tb;
+      for (let y = 3; y <= 8; y++) ctx.fillRect(7 * S, y * S, S, S);
+      ctx.fillStyle = P.sl;
+      [[1,9],[3,9],[8,9],[12,9]].forEach(([x,y]) => ctx.fillRect(x*S, y*S, S, Math.floor(S/2)));
+      ctx.fillStyle = P.wf;
+      ctx.fillRect(0, 12*S, 64, Math.floor(S/2));
+      ctx.fillStyle = '#ffffff';
+      [[2,12],[6,13],[10,12],[14,13]].forEach(([wx,wy]) => {
+        ctx.fillRect(wx*S + Math.floor(S/2), wy*S + Math.floor(S/4), Math.ceil(S/4), Math.ceil(S/4));
+      });
+      ctx.fillStyle = P.gs;
+      [[4,2],[8,2],[3,4]].forEach(([x,y]) => ctx.fillRect(x*S, y*S, Math.ceil(S/2), Math.ceil(S/2)));
+    }
+    drawIsland16('c-island-l', false);
+    drawIsland16('c-island-r', true);
+
+    // Scout & Fox tile
+    (function() {
+      const canvas = document.getElementById('c-sf');
+      const ctx = canvas.getContext('2d');
+      ctx.imageSmoothingEnabled = false;
+      const W = 160, H = 90;
+      ctx.fillStyle = '#0d1a30'; ctx.fillRect(0, 0, W, H);
+      for (let tx = 0; tx < W; tx += 16) for (let ty = 0; ty < H; ty += 16) {
+        const shade = (Math.floor(tx/16) + Math.floor(ty/16)) % 3;
+        ctx.fillStyle = shade===0?'#5ed62e':shade===1?'#54cc26':'#4ec424';
+        ctx.fillRect(tx, ty, 16, 16);
+      }
+      ctx.fillStyle = 'rgba(0,10,30,0.5)'; ctx.fillRect(0, 0, W, H);
+      const skin = '#F4C898';
+      function drawChar(cx, cy, isScout) {
+        const topC=isScout?'#22c488':'#f06020', botC=isScout?'#1a6aaa':'#8a3c10', hairC=isScout?'#4A2008':'#f0d020';
+        ctx.fillStyle='rgba(0,0,0,0.25)'; ctx.beginPath(); ctx.ellipse(cx,cy+22,10,4,0,0,Math.PI*2); ctx.fill();
+        ctx.fillStyle=botC; ctx.fillRect(cx-8,cy+10,16,11);
+        ctx.fillStyle=topC; ctx.fillRect(cx-8,cy+9,16,6);
+        ctx.fillStyle=topC; ctx.fillRect(cx-12,cy+10,5,8); ctx.fillRect(cx+8,cy+10,5,8);
+        ctx.fillStyle=skin; ctx.fillRect(cx-12,cy+17,5,5); ctx.fillRect(cx+8,cy+17,5,5);
+        ctx.fillStyle=skin; ctx.beginPath(); ctx.arc(cx,cy+3,8,0,Math.PI*2); ctx.fill();
+        ctx.fillStyle=hairC; ctx.beginPath(); ctx.arc(cx,cy,8,Math.PI,0); ctx.fill();
+        if (isScout) {
+          ctx.fillStyle=hairC;
+          ctx.fillRect(cx-9,cy-1,3,6); ctx.fillRect(cx+6,cy-1,3,6); ctx.fillRect(cx-4,cy-3,9,3);
+          ctx.beginPath(); ctx.moveTo(cx-9,cy+1); ctx.bezierCurveTo(cx-3,cy-7,cx+7,cy-5,cx+11,cy);
+          ctx.bezierCurveTo(cx+7,cy-3,cx-3,cy-4,cx-9,cy+2); ctx.closePath(); ctx.fill();
+          ctx.strokeStyle='#FFD060'; ctx.lineWidth=1.3;
+          ctx.beginPath(); ctx.arc(cx+10,cy+5,2,0,Math.PI*2); ctx.stroke(); ctx.lineWidth=1;
+        } else {
+          ctx.fillStyle=hairC;
+          ctx.beginPath(); ctx.arc(cx,cy-1,9,Math.PI,0); ctx.fill();
+          ctx.fillRect(cx-10,cy-1,5,7); ctx.fillRect(cx+6,cy-1,5,7);
+          ctx.fillRect(cx-11,cy+5,6,2); ctx.fillRect(cx+6,cy+5,6,2);
+          ctx.fillRect(cx-5,cy-6,5,5); ctx.fillRect(cx+1,cy-7,5,5); ctx.fillRect(cx+4,cy-5,4,4);
+        }
+        ctx.fillStyle='#1A0C04'; ctx.fillRect(cx-3,cy+4,2,2); ctx.fillRect(cx+2,cy+4,2,2);
+        ctx.fillStyle='rgba(220,100,90,0.7)'; ctx.fillRect(cx-2,cy+8,5,2);
+      }
+      drawChar(52, 44, true); drawChar(108, 44, false);
+      ctx.fillStyle='rgba(255,255,255,0.55)'; ctx.font='700 10px system-ui'; ctx.textAlign='center';
+      ctx.fillText('Scout', 52, 74); ctx.fillText('Fox', 108, 74);
+    })();
+
+    // Jellyfish tile
+    (function() {
+      const canvas = document.getElementById('c-jf');
+      const ctx = canvas.getContext('2d');
+      ctx.imageSmoothingEnabled = false;
+      const W = 160, H = 90, scale = 2;
+      const bands = [{y:0,c:'#000814'},{y:18,c:'#001229'},{y:40,c:'#001d3d'},{y:65,c:'#002a55'},{y:90,c:'#003566'}];
+      for (let i = 0; i < bands.length-1; i++) { ctx.fillStyle=bands[i].c; ctx.fillRect(0,bands[i].y,W,bands[i+1].y-bands[i].y); }
+      ctx.fillStyle='rgba(95,184,217,0.07)';
+      for (let x=20; x<W; x+=38) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x+14,H); ctx.lineTo(x+20,H); ctx.lineTo(x+6,0); ctx.closePath(); ctx.fill(); }
+      ctx.fillStyle='#90e0ef';
+      [[18,70],[30,50],[55,60],[72,40],[100,75],[130,55],[148,80]].forEach(([bx,by])=>{ ctx.fillRect(bx,by,2,2); ctx.fillRect(bx+1,by-1,1,1); });
+      function fr(x,y,w,h,c) { ctx.fillStyle=c; ctx.fillRect(Math.round(x*scale),Math.round(y*scale),w*scale,h*scale); }
+      function drawJelly(ox, oy, phase) {
+        fr(ox+4,oy+0,6,1,'#ff69b4');
+        fr(ox+2,oy+1,10,1,'#ff69b4'); fr(ox+3,oy+1,8,1,'#ffb3d9');
+        fr(ox+1,oy+2,12,1,'#ff69b4'); fr(ox+2,oy+2,10,1,'#ffb3d9');
+        fr(ox+0,oy+3,14,1,'#ff69b4'); fr(ox+1,oy+3,12,1,'#ffb3d9');
+        fr(ox+0,oy+4,14,1,'#ff69b4'); fr(ox+1,oy+4,12,1,'#ffb3d9');
+        fr(ox+0,oy+5,14,1,'#ff69b4'); fr(ox+1,oy+5,12,1,'#ffb3d9');
+        fr(ox+0,oy+6,14,1,'#d63384');
+        fr(ox+3,oy+1,1,1,'#ffb3d9'); fr(ox+2,oy+2,2,1,'#ffb3d9');
+        fr(ox+2,oy+3,1,2,'#ffb3d9'); fr(ox+3,oy+2,1,1,'#ffffff');
+        fr(ox+5,oy+3,4,1,'#ff69b4'); fr(ox+5,oy+4,4,1,'#d63384'); fr(ox+6,oy+5,2,1,'#ff69b4');
+        [[1,0],[4,0.7],[9,1.4],[12,2.1],[6,1.8],[8,0.4]].forEach(([tx,p]) => {
+          for (let row=0; row<7; row++) {
+            const offset = Math.round(Math.sin(phase+p+row*0.5)*1.3);
+            fr(ox+tx+offset, oy+7+row, 1, 1, row<4?'#ff9ec7':'#ffb3d9');
+          }
+        });
+      }
+      drawJelly(9,2,0.0); drawJelly(52,10,0.8); drawJelly(30,30,1.6); drawJelly(72,22,2.4); drawJelly(55,1,3.2);
+    })();
+  </script>
+</body>
+</html>
