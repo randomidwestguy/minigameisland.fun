@@ -37,8 +37,8 @@
       <canvas class="tile-canvas" id="c-jf" width="160" height="90"></canvas>
       <h2>Jellyfish Adventures</h2>
     </a>
-      <a href="pixel-art/" class="game-tile">
-      <canvas class="tile-canvas" id="c-jf" width="160" height="90"></canvas>
+    <a href="pixel-art/" class="game-tile">
+      <canvas class="tile-canvas" id="c-pa" width="160" height="90"></canvas>
       <h2>Pixel Art</h2>
     </a>
   </div>
@@ -177,6 +177,73 @@
         });
       }
       drawJelly(9,2,0.0); drawJelly(52,10,0.8); drawJelly(30,30,1.6); drawJelly(72,22,2.4); drawJelly(55,1,3.2);
+    })();
+
+    // Pixel Art tile
+    (function() {
+      const canvas = document.getElementById('c-pa');
+      const ctx = canvas.getContext('2d');
+      ctx.imageSmoothingEnabled = false;
+      const W = 160, H = 90;
+
+      ctx.fillStyle = '#1a0838'; ctx.fillRect(0, 0, W, H);
+
+      ctx.fillStyle = 'rgba(255,255,255,0.6)';
+      [[12,8],[40,14],[70,6],[100,12],[140,8],[20,30],[130,25],[150,40],[8,55],[50,60],[145,65]].forEach(([x,y]) => ctx.fillRect(x,y,1,1));
+      ctx.fillStyle = 'rgba(255,255,255,0.9)';
+      [[25,20],[88,5],[115,30],[60,70]].forEach(([x,y]) => ctx.fillRect(x,y,2,2));
+
+      const cx = 16, cy = 8, cw = 72, ch = 72, cell = 9;
+      ctx.fillStyle = '#fff'; ctx.fillRect(cx, cy, cw, ch);
+      ctx.strokeStyle = 'rgba(0,0,0,0.08)'; ctx.lineWidth = 0.5;
+      for (let i = 0; i <= 8; i++) {
+        ctx.beginPath(); ctx.moveTo(cx+i*cell, cy); ctx.lineTo(cx+i*cell, cy+ch); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(cx, cy+i*cell); ctx.lineTo(cx+cw, cy+i*cell); ctx.stroke();
+      }
+      ctx.strokeStyle = 'rgba(0,0,0,0.3)'; ctx.lineWidth = 1.5;
+      ctx.strokeRect(cx, cy, cw, ch);
+
+      const wm = [
+        [0,0,0,0,0,0,0,0],
+        [0,0,1,1,1,1,0,0],
+        [0,1,2,2,2,2,1,0],
+        [0,1,2,3,3,2,1,0],
+        [0,1,2,3,3,2,1,0],
+        [0,1,2,2,2,2,1,0],
+        [0,0,1,1,1,1,0,0],
+        [0,0,0,0,0,0,0,0],
+      ];
+      const wc = {1:'#1B5E20', 2:'#4CAF50', 3:'#FF5566'};
+      wm.forEach((row, r) => row.forEach((v, c) => {
+        if (!v) return;
+        ctx.fillStyle = wc[v];
+        ctx.fillRect(cx + c*cell, cy + r*cell, cell, cell);
+      }));
+      ctx.fillStyle = '#111';
+      [[3,3],[4,3],[2,4],[5,4]].forEach(([c,r]) => ctx.fillRect(cx+c*cell+3, cy+r*cell+3, 3, 3));
+
+      const swatches = ['#F44336','#FF9800','#FFEB3B','#4CAF50','#2196F3','#9C27B0','#E91E63','#00BCD4','#fff','#212121'];
+      const sx = 100, sy = 8, sw = 12, sg = 3;
+      swatches.forEach((col, i) => {
+        const row = Math.floor(i / 2), col2 = i % 2;
+        const px = sx + col2 * (sw + sg);
+        const py = sy + row * (sw + sg);
+        ctx.fillStyle = col;
+        ctx.fillRect(px, py, sw, sw);
+        if (col === '#fff') { ctx.strokeStyle='rgba(0,0,0,0.2)'; ctx.lineWidth=0.5; ctx.strokeRect(px,py,sw,sw); }
+        if (col === '#F44336') { ctx.strokeStyle='#fff'; ctx.lineWidth=1.5; ctx.strokeRect(px-1,py-1,sw+2,sw+2); }
+      });
+
+      const px2 = cx+cw-10, py2 = cy+2;
+      ctx.fillStyle = '#FFD700'; ctx.fillRect(px2, py2, 5, 12);
+      ctx.fillStyle = '#FF8F00'; ctx.fillRect(px2, py2, 5, 3);
+      ctx.fillStyle = '#F4C898';
+      ctx.beginPath(); ctx.moveTo(px2,py2+12); ctx.lineTo(px2+2,py2+15); ctx.lineTo(px2+5,py2+12); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#1a1a1a'; ctx.fillRect(px2+1, py2+14, 3, 1);
+
+      ctx.fillStyle = 'rgba(255,255,255,0.5)';
+      ctx.font = '700 9px system-ui'; ctx.textAlign = 'center';
+      ctx.fillText('Draw the prompt!', W/2 + 8, H - 6);
     })();
   </script>
 </body>
