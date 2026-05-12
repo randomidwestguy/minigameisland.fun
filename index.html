@@ -40,6 +40,10 @@
     <a href="pixel-art/" class="game-tile">
       <canvas class="tile-canvas" id="c-pa" width="160" height="90"></canvas>
       <h2>Pixel Art</h2>
+    <a href="terra-sandbox/" class="game-tile">
+  <canvas class="tile-canvas" id="c-ts" width="160" height="90"></canvas>
+  <h2>Terra Sandbox</h2>
+</a>
     </a>
   </div>
 
@@ -245,6 +249,85 @@
       ctx.font = '700 9px system-ui'; ctx.textAlign = 'center';
       ctx.fillText('Draw the prompt!', W/2 + 8, H - 6);
     })();
+    // Terra Sandbox tile
+(function() {
+  const canvas = document.getElementById('c-ts');
+  const ctx = canvas.getContext('2d');
+  ctx.imageSmoothingEnabled = false;
+  const W = 160, H = 90;
+
+  // Dark sky background
+  ctx.fillStyle = '#0a0c10'; ctx.fillRect(0, 0, W, H);
+
+  // Stars
+  ctx.fillStyle = 'rgba(255,255,255,0.7)';
+  [[15,8],[45,5],[80,10],[110,4],[140,9],[160,6],[30,18],[90,15],[130,18]].forEach(([x,y]) => ctx.fillRect(x,y,1,1));
+  ctx.fillStyle = 'rgba(255,255,255,0.4)';
+  [[60,12],[100,8],[25,14],[150,14]].forEach(([x,y]) => ctx.fillRect(x,y,2,2));
+
+  // Terrain — isometric-style layered landscape
+  // Ocean / water base
+  ctx.fillStyle = '#0a3a6a'; ctx.fillRect(0, 52, W, 38);
+  ctx.fillStyle = '#0a4a8a'; ctx.fillRect(0, 52, W, 4);
+  // Water shimmer
+  ctx.fillStyle = 'rgba(100,180,255,0.15)';
+  [[10,56],[35,60],[70,57],[100,62],[130,58],[148,63]].forEach(([x,y]) => ctx.fillRect(x,y,18,2));
+
+  // Sandy shore
+  ctx.fillStyle = '#c8a84a';
+  ctx.beginPath(); ctx.moveTo(0,52); ctx.lineTo(40,48); ctx.lineTo(80,50); ctx.lineTo(120,46); ctx.lineTo(160,50); ctx.lineTo(160,56); ctx.lineTo(0,56); ctx.closePath(); ctx.fill();
+
+  // Grass lowlands
+  ctx.fillStyle = '#2d6e1a';
+  ctx.beginPath(); ctx.moveTo(0,52); ctx.lineTo(40,48); ctx.lineTo(80,50); ctx.lineTo(120,46); ctx.lineTo(160,50); ctx.lineTo(160,38); ctx.lineTo(120,34); ctx.lineTo(80,36); ctx.lineTo(40,38); ctx.lineTo(0,42); ctx.closePath(); ctx.fill();
+  // Grass highlight
+  ctx.fillStyle = '#388020';
+  ctx.beginPath(); ctx.moveTo(0,42); ctx.lineTo(40,38); ctx.lineTo(80,36); ctx.lineTo(120,34); ctx.lineTo(160,38); ctx.lineTo(160,40); ctx.lineTo(120,36); ctx.lineTo(80,38); ctx.lineTo(40,40); ctx.lineTo(0,44); ctx.closePath(); ctx.fill();
+
+  // Highland / rock plateau
+  ctx.fillStyle = '#6a5a48';
+  ctx.beginPath(); ctx.moveTo(30,38); ctx.lineTo(70,28); ctx.lineTo(110,26); ctx.lineTo(140,32); ctx.lineTo(140,42); ctx.lineTo(110,38); ctx.lineTo(70,38); ctx.lineTo(30,46); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#7a6a56';
+  ctx.beginPath(); ctx.moveTo(30,38); ctx.lineTo(70,28); ctx.lineTo(110,26); ctx.lineTo(140,32); ctx.lineTo(140,34); ctx.lineTo(110,28); ctx.lineTo(70,30); ctx.lineTo(30,40); ctx.closePath(); ctx.fill();
+
+  // Snow-capped mountain peak
+  ctx.fillStyle = '#5a7a6a';
+  ctx.beginPath(); ctx.moveTo(60,26); ctx.lineTo(85,8); ctx.lineTo(110,24); ctx.lineTo(95,30); ctx.lineTo(75,30); ctx.closePath(); ctx.fill();
+  // Snow
+  ctx.fillStyle = '#dde8ee';
+  ctx.beginPath(); ctx.moveTo(75,16); ctx.lineTo(85,8); ctx.lineTo(96,16); ctx.lineTo(90,20); ctx.lineTo(80,20); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#eef4f8';
+  ctx.beginPath(); ctx.moveTo(81,12); ctx.lineTo(85,8); ctx.lineTo(90,12); ctx.lineTo(87,15); ctx.lineTo(83,15); ctx.closePath(); ctx.fill();
+
+  // Small volcano right side
+  ctx.fillStyle = '#4a3828';
+  ctx.beginPath(); ctx.moveTo(118,32); ctx.lineTo(130,18); ctx.lineTo(142,30); ctx.lineTo(138,36); ctx.lineTo(122,36); ctx.closePath(); ctx.fill();
+  // Lava glow at crater
+  ctx.fillStyle = '#ff6010';
+  ctx.beginPath(); ctx.arc(130, 19, 4, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#ffaa20';
+  ctx.beginPath(); ctx.arc(130, 19, 2, 0, Math.PI*2); ctx.fill();
+  // Lava drip
+  ctx.fillStyle = 'rgba(255,80,10,0.6)';
+  ctx.fillRect(129, 19, 3, 8);
+
+  // River carving through terrain
+  ctx.fillStyle = '#1a6aaa';
+  ctx.beginPath(); ctx.moveTo(85,30); ctx.quadraticCurveTo(75,38,65,44); ctx.quadraticCurveTo(55,48,45,52); ctx.lineTo(42,52); ctx.quadraticCurveTo(52,48,62,44); ctx.quadraticCurveTo(72,38,82,30); ctx.closePath(); ctx.fill();
+
+  // Forest dots
+  [[32,40],[38,38],[44,38],[50,40],[56,38],[62,40]].forEach(([x,y]) => {
+    ctx.fillStyle = '#1a5010';
+    ctx.beginPath(); ctx.arc(x, y, 3, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#22660e';
+    ctx.beginPath(); ctx.arc(x-0.5, y-0.5, 2, 0, Math.PI*2); ctx.fill();
+  });
+
+  // Label
+  ctx.fillStyle = 'rgba(255,255,255,0.45)';
+  ctx.font = '700 9px system-ui'; ctx.textAlign = 'center';
+  ctx.fillText('Sculpt your world', W/2, H - 6);
+})();
   </script>
 </body>
 </html>
