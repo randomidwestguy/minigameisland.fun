@@ -867,9 +867,37 @@ function tickWeather(){
     case 'volcanic':
       if(f===40&&!d.erupt){d.erupt=true;const vr=20+rng()*12;for(let y=0;y<N;y++)for(let x=0;x<N;x++){const dist=Math.sqrt((x-d.vx)**2+(y-d.vy)**2);if(dist<vr*3.5)hmap[y*N+x]=Math.min(HMAX,hmap[y*N+x]+Math.exp(-dist*dist/(vr*vr))*.50+fbm(x/N*10,y/N*10,3,2,.5)*.07);}uploadHmap();}
       if(f>50&&f%20===0){erodeStep(.08);uploadHmap();}if(f%15===0&&wlvl<.40){wlvl=Math.min(.40,wlvl+.002);setWater(wlvl);}break;
-    case 'meteor':
-      const hitF=Math.floor(T*.42);
-      if(!d.hit&&f>=hitF){d.hit=true;for(let y=0;y<N;y++)for(let x=0;x<N;x++){const r2=Math.sqrt((x-d.ix)**2+(y-d.iy)**2)/d.ir;if(r2<1)hmap[y*N+x]=Math.max(0,hmap[y*N+x]-(1-r2*r2)*.65);else if(r2<1.7)hmap[y*N+x]=Math.min(HMAX,hmap[y*N+x]+(1.7-r2)*.22);}uploadHmap();}break;
+    case 'meteor':{
+      const hitF=Math.floor(T*.38);
+      if(!d.hit&&f>=hitF){
+        d.hit=true;d.shakeEnd=f+45;
+        const ir=d.ir;
+        for(let y=0;y<N;y++)for(let x=0;x<N;x++){
+          const r=Math.sqrt((x-d.ix)**2+(y-d.iy)**2)/ir;
+          if(r<0.35){// deep central pit
+            hmap[y*N+x]=Math.max(0,hmap[y*N+x]-(1-r/0.35)*0.88);
+          }else if(r<1.0){// bowl walls
+            hmap[y*N+x]=Math.max(0,hmap[y*N+x]-(1-r)*(1-r)*0.75);
+          }else if(r<1.7){// raised ejecta rim
+            hmap[y*N+x]=Math.min(HMAX,hmap[y*N+x]+(1.7-r)*0.42);
+          }else if(r<3.5){// ejecta blanket
+            const nb=fbm(x/N*12,y/N*12,2,2,.5)*0.06;
+            hmap[y*N+x]=Math.min(HMAX,hmap[y*N+x]+Math.max(0,(3.5-r)/3.5*0.14+nb));
+          }
+          // molten lava in the crater core
+          if(r<0.55){lavaMap[y*N+x]=Math.min(255,Math.round((1-r/0.55)*230));}
+        }
+        uploadHmap();uploadLava();
+      }
+      // screen shake: strong jolt decaying over shakeEnd frames
+      if(d.shakeEnd&&f<=d.shakeEnd){
+        const sf=d.shakeEnd-f,decay=sf/45;
+        const sh=decay*18*Math.sin(f*1.4);
+        document.getElementById('cw').style.transform=`translate(${sh}px,${sh*.45}px)`;
+      }else if(d.shakeEnd&&f===d.shakeEnd+1){
+        document.getElementById('cw').style.transform='';
+      }
+      break;}
   }
   if(f>=T){wx.active=false;wx=null;document.getElementById('cw').style.transform='';}
 }
@@ -898,35 +926,69 @@ function drawBg(ts){
   scCtx.clearRect(0,0,W,H);
   scCtx.fillStyle='rgb(2,6,18)';scCtx.fillRect(0,0,W,H);
   scCtx.save();
-  // Galaxies
-  [{x:.10,y:.18,rx:88,ry:34,a:.55,hue:'168,145,255',ang:.5},
-   {x:.88,y:.12,rx:68,ry:26,a:.46,hue:'145,185,255',ang:.9},
-   {x:.55,y:.92,rx:78,ry:30,a:.42,hue:'200,160,255',ang:.3},
-   {x:.04,y:.65,rx:52,ry:20,a:.38,hue:'160,200,255',ang:1.1}
+
+  // ── 8 galaxies: spirals, ellipticals, dwarfs, clusters ─────────────────────
+  [
+    {x:.08,y:.14,rx:95,ry:32,a:.52,hue:'168,145,255',ang:.52},  // large purple spiral
+    {x:.90,y:.10,rx:72,ry:24,a:.44,hue:'145,185,255',ang:.88},  // blue elliptical
+    {x:.52,y:.93,rx:82,ry:28,a:.40,hue:'200,155,255',ang:.28},  // violet edge-on
+    {x:.03,y:.62,rx:55,ry:18,a:.36,hue:'160,205,255',ang:1.12}, // blue dwarf
+    {x:.82,y:.88,rx:60,ry:22,a:.34,hue:'255,195,160',ang:-.38}, // warm lenticular
+    {x:.20,y:.82,rx:40,ry:40,a:.28,hue:'200,220,255',ang:0},    // face-on round cluster
+    {x:.65,y:.06,rx:50,ry:16,a:.32,hue:'180,230,200',ang:1.55}, // green-teal sliver
+    {x:.42,y:.50,rx:28,ry:28,a:.18,hue:'255,215,180',ang:0},    // faint central smear
   ].forEach(({x,y,rx,ry,a,hue,ang})=>{
     const cx=x*W,cy=y*H;
     scCtx.save();scCtx.translate(cx,cy);scCtx.rotate(ang);scCtx.scale(1,ry/rx);
     const g=scCtx.createRadialGradient(0,0,0,0,0,rx);
     g.addColorStop(0,`rgba(${hue},${a})`);
-    g.addColorStop(.45,`rgba(${hue},${(a*.22).toFixed(3)})`);
+    g.addColorStop(.38,`rgba(${hue},${(a*.28).toFixed(3)})`);
+    g.addColorStop(.72,`rgba(${hue},${(a*.07).toFixed(3)})`);
     g.addColorStop(1,'rgba(0,0,0,0)');
     scCtx.fillStyle=g;scCtx.beginPath();scCtx.arc(0,0,rx,0,Math.PI*2);scCtx.fill();
     scCtx.restore();
   });
-  // Stars — twinkling white dots with glow halos
-  for(let i=0;i<240;i++){
-    const sx=((i*7919+31415926)%99991)/99991*W;
-    const sy=((i*6271+27182818)%99991)/99991*H;
-    const tw=Math.sin(ts*(.14+(i%11)*.09)+i*1.618)*.42+.58;
-    const sz=1.1+(i%5)*.44;
-    // glow
-    const g=scCtx.createRadialGradient(sx,sy,0,sx,sy,sz*3.5);
-    g.addColorStop(0,`rgba(220,232,255,${(tw*.7).toFixed(2)})`);
-    g.addColorStop(1,'rgba(180,210,255,0)');
-    scCtx.fillStyle=g;scCtx.beginPath();scCtx.arc(sx,sy,sz*3.5,0,Math.PI*2);scCtx.fill();
-    // bright core
-    scCtx.fillStyle=`rgba(255,255,255,${(tw*.95).toFixed(2)})`;
-    scCtx.beginPath();scCtx.arc(sx,sy,sz*.55,0,Math.PI*2);scCtx.fill();
+
+  // ── Stars: varied scatter, twinkling, colour temperature, size magnitude ───
+  // Two interleaved hash sequences for non-grid X distribution
+  const N_STARS=360;
+  for(let i=0;i<N_STARS;i++){
+    // Non-uniform positions: mix two different primes to break grid pattern
+    const h1=((i*6271+i*i*31+27182818)%99991)/99991;
+    const h2=((i*7919+i*i*17+31415926)%99991)/99991;
+    const h3=((i*5623+i*i*53+14142135)%99991)/99991;
+    // Cluster slightly around golden-ratio positions for natural look
+    const sx=(h1*.88+h3*.12)*W;
+    const sy=(h2*.88+(1-h3)*.12)*H;
+
+    // Per-star unique twinkling: speed, phase, amplitude all vary
+    const twSpeed=.08+(h3*h1)*.28;
+    const twPhase=i*1.6180339887+h2*Math.PI;
+    const twAmp=.22+h2*.38;
+    const tw=Math.sin(ts*twSpeed+twPhase)*twAmp+(1-twAmp*.5);
+
+    // Star size: mostly tiny, a few larger bright ones (log distribution)
+    const mag=Math.pow(h3,2.2); // bias toward small
+    const sz=0.35+mag*2.8;
+
+    // Colour temperature: hot blue-white → warm yellow-white
+    const temp=h1; // 0=blue-white, 1=warm yellow
+    const sr=Math.round(200+temp*55);
+    const sg=Math.round(210+temp*40);
+    const sb=Math.round(255-temp*80);
+
+    // Only draw glow for brighter stars (saves fill calls)
+    if(sz>0.9){
+      const glowR=sz*3.8;
+      const g=scCtx.createRadialGradient(sx,sy,0,sx,sy,glowR);
+      g.addColorStop(0,`rgba(${sr},${sg},${sb},${(tw*.65).toFixed(2)})`);
+      g.addColorStop(1,'rgba(140,165,255,0)');
+      scCtx.fillStyle=g;scCtx.beginPath();scCtx.arc(sx,sy,glowR,0,Math.PI*2);scCtx.fill();
+    }
+    // Core dot
+    const coreA=(tw*.92+.05).toFixed(2);
+    scCtx.fillStyle=`rgba(${sr},${sg},${sb},${coreA})`;
+    scCtx.beginPath();scCtx.arc(sx,sy,sz*.52,0,Math.PI*2);scCtx.fill();
   }
   scCtx.restore();
 }
@@ -946,87 +1008,254 @@ function drawWeatherFX(ts){
     case 'volcanic':if(f>35&&f<80){fxCtx.fillStyle=`rgba(220,100,30,${Math.max(0,.7-(f-35)*.018)})`;fxCtx.fillRect(0,0,W,H);}if(f>50){fxCtx.fillStyle='rgba(30,15,5,.15)';fxCtx.fillRect(0,0,W,H);}if(f>55){fxCtx.fillStyle='rgba(80,70,60,.50)';for(let i=0;i<120;i++){const idx=i/120,x=(idx*2.3%1.1-.05)*W,y2=((ts*90+idx*H*1.2)%(H*1.2))-H*.1+Math.sin(ts+idx*4)*.03*W,r=1+(idx*9%3);fxCtx.beginPath();fxCtx.arc(x,y2,r,0,Math.PI*2);fxCtx.fill();}}break;
 
     case 'meteor': {
-      // Project 3D impact position to 2D screen
-      const impWX=(d.ix/N-.5)*TSIZE*2;
-      const impWY=hmap[d.iy*N+d.ix]*HS;
-      const impWZ=(0.5-d.iy/N)*TSIZE*2; // flipped Z
+      const impWX=(d.ix/N-.5)*TSIZE*2,impWY=hmap[d.iy*N+d.ix]*HS,impWZ=(0.5-d.iy/N)*TSIZE*2;
       const impSc=project3D(impWX,impWY,impWZ);
-      const hitF=Math.floor(T*.42);
+      const isx=impSc?impSc[0]:W*.5, isy=impSc?impSc[1]:H*.55;
+      const hitF=Math.floor(T*.38);
 
-      if(f<hitF&&impSc){
-        // Meteor travels from upper-right corner toward impact point
-        const prog=f/hitF;
-        // Ease-in: slow at start, fast at end
-        const ep=prog*prog*(3-2*prog);
-        const startX=fxCanvas.width*.95+200;
-        const startY=-120;
-        const mx=lerp(startX,impSc[0],ep);
-        const my=lerp(startY,impSc[1],ep);
-        // Trail ? draw multiple fading segments
-        const trailSteps=12;
-        for(let ti=0;ti<trailSteps;ti++){
-          const tp=Math.max(0,ep-ti*.025);
-          const tx=lerp(startX,impSc[0],tp);
-          const ty=lerp(startY,impSc[1],tp);
-          const tp2=Math.max(0,ep-(ti+1)*.025);
-          const tx2=lerp(startX,impSc[0],tp2);
-          const ty2=lerp(startY,impSc[1],tp2);
-          const a=(1-ti/trailSteps)*0.85;
-          const w2=(1-ti/trailSteps)*(6+ep*10);
-          fxCtx.strokeStyle=`rgba(255,${180-ti*8},${50-ti*4},${a})`;
-          fxCtx.lineWidth=w2;fxCtx.lineCap='round';
+      if(f<hitF){
+        // ── APPROACH ──────────────────────────────────────────────
+        const prog=f/hitF, ep=prog*prog;
+        const sx=W*1.08, sy=-H*.08; // entry from upper-right
+        const mx=sx+(isx-sx)*ep, my=sy+(isy-sy)*ep;
+
+        // Sky brightens as meteor approaches
+        if(ep>.4){
+          fxCtx.fillStyle=`rgba(255,210,120,${((ep-.4)/.6)*.18})`;
+          fxCtx.fillRect(0,0,W,H);
+        }
+
+        // Long ionisation trail — blue-white at head, orange-red fading to nothing
+        for(let ti=0;ti<28;ti++){
+          const tp=Math.max(0,ep-ti*.014),tp2=Math.max(0,ep-(ti+1)*.014);
+          const tx=sx+(isx-sx)*tp,ty=sy+(isy-sy)*tp;
+          const tx2=sx+(isx-sx)*tp2,ty2=sy+(isy-sy)*tp2;
+          const a=(1-ti/28)*(0.92)*ep;
+          const w=(1-ti/28)*(10+ep*20);
+          const gr=ti<6?Math.round(255-ti*20):Math.max(60,200-ti*8);
+          const gb=ti<6?Math.round(255-ti*40):10;
+          fxCtx.strokeStyle=`rgba(255,${gr},${gb},${a.toFixed(3)})`;
+          fxCtx.lineWidth=w;fxCtx.lineCap='round';
           fxCtx.beginPath();fxCtx.moveTo(tx,ty);fxCtx.lineTo(tx2,ty2);fxCtx.stroke();
         }
-        // Fireball glow
-        const ballR=(10+ep*18)*devicePixelRatio;
-        const glow=fxCtx.createRadialGradient(mx,my,0,mx,my,ballR*2.8);
-        glow.addColorStop(0,'rgba(255,255,230,.98)');
-        glow.addColorStop(.2,'rgba(255,220,80,.90)');
-        glow.addColorStop(.5,'rgba(255,120,20,.55)');
-        glow.addColorStop(1,'rgba(255,50,0,0)');
-        fxCtx.fillStyle=glow;fxCtx.beginPath();fxCtx.arc(mx,my,ballR*2.8,0,Math.PI*2);fxCtx.fill();
-        // Bright core
-        fxCtx.fillStyle='rgba(255,255,255,.95)';fxCtx.beginPath();fxCtx.arc(mx,my,ballR*.4,0,Math.PI*2);fxCtx.fill();
+
+        // Secondary fragments breaking off after 50% progress
+        if(ep>.5){
+          for(let fi=0;fi<4;fi++){
+            const fep=(ep-.5)*2;
+            const fang=[-0.45,-0.2,0.25,0.5][fi];
+            const fspd=(18+fi*12)*fep;
+            const fpx=mx+Math.cos(fang+Math.PI*.55)*fspd;
+            const fpy=my+Math.sin(fang+Math.PI*.55)*fspd*0.5;
+            const fa=Math.max(0,(1-fep*.85)*.65);
+            if(fa<=0)continue;
+            fxCtx.fillStyle=`rgba(255,${180-fi*25},40,${fa.toFixed(3)})`;
+            fxCtx.beginPath();fxCtx.arc(fpx,fpy,Math.max(.5,3.5-fi*.5),0,Math.PI*2);fxCtx.fill();
+            // mini trail per fragment
+            fxCtx.strokeStyle=`rgba(255,${160-fi*20},30,${(fa*.5).toFixed(3)})`;
+            fxCtx.lineWidth=Math.max(.5,1.5-fi*.3);
+            fxCtx.beginPath();fxCtx.moveTo(fpx,fpy);
+            fxCtx.lineTo(fpx-Math.cos(fang+Math.PI*.55)*fspd*.4,fpy-Math.sin(fang+Math.PI*.55)*fspd*.2);
+            fxCtx.stroke();
+          }
+        }
+
+        // Fireball — white-hot core with layered glow
+        const ballR=(16+ep*28)*devicePixelRatio;
+        const glow=fxCtx.createRadialGradient(mx,my,0,mx,my,ballR*3.5);
+        glow.addColorStop(0,'rgba(255,255,255,1)');
+        glow.addColorStop(.12,'rgba(255,255,210,.95)');
+        glow.addColorStop(.3,'rgba(255,190,60,.80)');
+        glow.addColorStop(.55,'rgba(255,90,15,.45)');
+        glow.addColorStop(1,'rgba(200,30,0,0)');
+        fxCtx.fillStyle=glow;fxCtx.beginPath();fxCtx.arc(mx,my,ballR*3.5,0,Math.PI*2);fxCtx.fill();
+        fxCtx.fillStyle='rgba(255,255,255,1)';
+        fxCtx.beginPath();fxCtx.arc(mx,my,ballR*.35,0,Math.PI*2);fxCtx.fill();
+
       } else {
+        // ── POST IMPACT ────────────────────────────────────────────
         const pf=f-hitF;
-        // Full-screen flash
-        const flashA=Math.max(0,.98-pf*.060);
-        if(flashA>0){fxCtx.fillStyle=`rgba(255,245,200,${flashA})`;fxCtx.fillRect(0,0,W,H);}
-        if(impSc){
-          // Shockwave rings ? multiple expanding circles
-          for(let ring=0;ring<3;ring++){
-            const rDelay=ring*6,rf=pf-rDelay;
-            if(rf>0){
-              const ringR=rf*18*(1+ring*.3);
-              const ringA=Math.max(0,.85-rf*.040)*(1-ring*.25);
-              if(ringA>0){
-                fxCtx.strokeStyle=`rgba(255,${200-ring*30},${100-ring*20},${ringA})`;
-                fxCtx.lineWidth=Math.max(1,5-ring*1.2-rf*.08);
-                fxCtx.beginPath();fxCtx.arc(impSc[0],impSc[1],ringR,0,Math.PI*2);fxCtx.stroke();
+
+        // Blinding white flash filling the entire viewport
+        const flashA=Math.max(0,1.0-pf*.055);
+        if(flashA>0){
+          fxCtx.fillStyle=`rgba(255,252,225,${flashA})`;
+          fxCtx.fillRect(0,0,W,H);
+        }
+
+        // Shockwave rings — fast-expanding pressure waves
+        for(let ring=0;ring<4;ring++){
+          const rDelay=ring*5, rf=pf-rDelay;
+          if(rf<=0)continue;
+          const spd=ring===0?32:22-ring*3;
+          const ringR=rf*spd;
+          const base=ring===0?.92:.72;
+          const ringA=Math.max(0,base-rf*.038-ring*.14);
+          if(ringA<=0)continue;
+          const rr=ring===0?255:210-ring*18;
+          const rg=ring===0?245:170-ring*14;
+          fxCtx.strokeStyle=`rgba(${rr},${rg},${Math.max(0,120-ring*25)},${ringA.toFixed(3)})`;
+          fxCtx.lineWidth=Math.max(.3,(ring===0?9:5)-ring-rf*.09);
+          fxCtx.beginPath();fxCtx.arc(isx,isy,ringR,0,Math.PI*2);fxCtx.stroke();
+        }
+
+        // High-arc ejecta with pseudo-gravity
+        if(pf<110){
+          for(let ei=0;ei<30;ei++){
+            const ang=(ei/30)*Math.PI*2;
+            const spd=3+(ei%6)*2.8;
+            const grav=0.55;
+            const t2=pf*.55;
+            const ex=isx+Math.cos(ang)*spd*t2;
+            const ey=isy+Math.sin(ang)*spd*t2*.48-grav*t2*t2*.5;
+            const ea=Math.max(0,.88-pf*.0085);
+            if(ea<=0)continue;
+            const heat=Math.max(0,1-pf*.013);
+            const eSize=Math.max(.4,2.8-pf*.022+(ei%4)*.4);
+            fxCtx.fillStyle=`rgba(${Math.round(210+heat*45)},${Math.round(110-ei%5*12)},${Math.round(25*heat)},${ea.toFixed(3)})`;
+            fxCtx.beginPath();fxCtx.arc(ex,ey,eSize,0,Math.PI*2);fxCtx.fill();
+          }
+        }
+
+        // Animated particle mushroom cloud — toroidal cap + turbulent stem
+        if(pf>3){
+          const grow=Math.min(1,(pf-3)/48), fade=Math.max(0,1-Math.max(0,(pf-82)/105));
+          const cA=grow*fade;
+          if(cA>.008){
+            const t=pf*.022, exp=Math.min(1,pf/85);
+            const ch=H*.76*grow;
+            const capCY=isy-ch;
+            const capR=Math.min(W*.27,ch*.70)*(1+exp*.14);
+            const capVR=capR*.30, stemW=capR*.13;
+            // Deterministic hash seeded on impact position
+            const hsh=i=>((i*6271+(d.ix|0)*7919+(d.iy|0)*3571+i*i*17)%99991)/99991;
+            // 4-component turbulence: organic animated displacement
+            const tb=(base,tt,ph)=>
+              Math.sin(base*4.2+tt*2.5+ph)*.38
+             +Math.sin(base*8.5-tt*1.7+ph*1.3)*.24
+             +Math.sin(base*2.6+tt*3.4+ph*.75)*.18
+             +Math.sin(base*13.8-tt*4.9+ph*2.0)*.12;
+
+            fxCtx.save();
+
+            // ── Atmospheric darkening ──────────────────────────────────────────
+            const aG=fxCtx.createRadialGradient(isx,capCY,capR*.15,isx,capCY,capR*3.1);
+            aG.addColorStop(0,`rgba(0,0,0,${(cA*.54).toFixed(2)})`);
+            aG.addColorStop(.5,`rgba(0,0,0,${(cA*.21).toFixed(2)})`);
+            aG.addColorStop(1,'rgba(0,0,0,0)');
+            fxCtx.fillStyle=aG;fxCtx.fillRect(0,0,W,H);
+
+            // ── Ground base surge (flattened ellipse) ─────────────────────────
+            fxCtx.save();fxCtx.translate(isx,isy);fxCtx.scale(1,.18);
+            const sR=capR*(1.9+exp*.5);
+            const sG=fxCtx.createRadialGradient(0,0,stemW*2,0,0,sR);
+            sG.addColorStop(0,`rgba(58,42,22,${(cA*.92).toFixed(2)})`);
+            sG.addColorStop(.35,`rgba(40,29,14,${(cA*.72).toFixed(2)})`);
+            sG.addColorStop(.75,`rgba(24,17,8,${(cA*.44).toFixed(2)})`);
+            sG.addColorStop(1,'rgba(0,0,0,0)');
+            fxCtx.fillStyle=sG;fxCtx.beginPath();fxCtx.arc(0,0,sR,0,Math.PI*2);fxCtx.fill();
+            fxCtx.restore();
+
+            // ── STEM: 80 animated puffs with upward rise + turbulence ─────────
+            for(let i=0;i<80;i++){
+              const st=i/80;
+              const h0=hsh(i),h1=hsh(i+80),h2=hsh(i+160);
+              // Width: narrows moving up, flares at base
+              const hw=stemW*(0.48+Math.pow(Math.sin(st*Math.PI*.68),1.7)*.52+.42*(1-st)*.8);
+              // Animated turbulent x drift
+              const xd=tb(st*2.2,t,h2*6.28)*hw*(1+exp*.3);
+              // Slow upward drift of puffs over time
+              const driftY=exp*stemW*2.5*h0;
+              const px=isx+xd, py=(isy-ch*st)-driftY;
+              const ps=Math.max(3,hw*(.70+h1*.65)*(1+exp*.22));
+              // Heat: orange-hot at base → dark charcoal at top
+              const heat=Math.max(0,1-st*2.6)*grow;
+              const rr=Math.round(16+heat*88+h0*10);
+              const gg=Math.round(10+heat*42+h0*6);
+              const bb=Math.round(4+heat*8);
+              const pa=Math.min(.82,cA*(0.40+h1*.22)*(1-st*.12));
+              fxCtx.fillStyle=`rgba(${rr},${gg},${bb},${pa.toFixed(2)})`;
+              fxCtx.beginPath();fxCtx.arc(px,py,ps,0,Math.PI*2);fxCtx.fill();
+            }
+
+            // ── CAP: 140 puffs in toroidal rolling circulation ────────────────
+            // Real mushroom caps have toroidal vortex: gas rises center, rolls
+            // outward over top, descends outer edge, pulled back in at base.
+            const tilt=capVR/capR;
+            for(let pass=0;pass<2;pass++){       // back then front
+              for(let i=0;i<140;i++){
+                const baseAng=(i/140)*Math.PI*2;
+                const h0=hsh(i+300),h1=hsh(i+440),h2=hsh(i+580);
+                // Toroidal roll speed: inner particles circulate faster
+                const radFrac=0.70+h0*.30;
+                const rollSpeed=(0.50+h1*.28)/radFrac; // faster near center
+                const ang=baseAng+t*rollSpeed;
+                const sn=Math.sin(ang), cs=Math.cos(ang);
+                if(pass===0&&sn>=0)continue;    // back half
+                if(pass===1&&sn<0)continue;     // front half
+                // Toroidal circulation vertical: puffs arc over the top
+                const vertCirc=sn*capVR*(.50+h2*.18);
+                // Turbulent radial wobble
+                const radNoise=1+tb(ang*.8,t*.65,h2*5.5)*.11;
+                const r=capR*radFrac*radNoise*(1+exp*.10);
+                const px=isx+cs*r;
+                const py=capCY+sn*r*tilt+vertCirc*(1-Math.abs(sn)*.35);
+                // Puff radius — larger on outer ring, smaller inward
+                const ps=Math.max(4,(capVR*.42+h1*capVR*.38)*(1+exp*.18));
+                // Lighting: top(sn<0,back=lit) vs underside(sn>0=shadow)
+                // In perspective back=top, front=underside
+                const litFront=pass===0; // back half faces up = lit
+                const lit=litFront?(0.55+h0*.30):(0.04+h0*.12);
+                const rr=Math.round(8+lit*138);
+                const gg=Math.round(5+lit*104);
+                const bb=Math.round(2+lit*62);
+                const pa=Math.min(.86,cA*(0.52+h1*.24));
+                fxCtx.fillStyle=`rgba(${rr},${gg},${bb},${pa.toFixed(2)})`;
+                fxCtx.beginPath();fxCtx.arc(px,py,ps,0,Math.PI*2);fxCtx.fill();
               }
             }
+
+            // ── Sunlit crown: top of cap lit by ambient sky ───────────────────
+            fxCtx.save();fxCtx.translate(isx,capCY-capVR*.52);fxCtx.scale(1,(capVR*.68)/capR);
+            const cG=fxCtx.createRadialGradient(-capR*.06,0,0,0,0,capR*.90);
+            cG.addColorStop(0,`rgba(188,155,110,${(cA*.78).toFixed(2)})`);
+            cG.addColorStop(.30,`rgba(132,105,72,${(cA*.62).toFixed(2)})`);
+            cG.addColorStop(.62,`rgba(70,54,34,${(cA*.40).toFixed(2)})`);
+            cG.addColorStop(1,'rgba(22,16,8,0)');
+            fxCtx.fillStyle=cG;fxCtx.beginPath();fxCtx.arc(0,0,capR*.90,0,Math.PI*2);fxCtx.fill();
+            fxCtx.restore();
+
+            // ── Stem base fire glow ───────────────────────────────────────────
+            const fG=fxCtx.createRadialGradient(isx,isy-4,0,isx,isy,stemW*7.5);
+            fG.addColorStop(0,`rgba(255,165,35,${(cA*.70).toFixed(2)})`);
+            fG.addColorStop(.42,`rgba(218,74,10,${(cA*.38).toFixed(2)})`);
+            fG.addColorStop(1,'rgba(145,22,0,0)');
+            fxCtx.fillStyle=fG;fxCtx.beginPath();fxCtx.arc(isx,isy,stemW*7.5,0,Math.PI*2);fxCtx.fill();
+
+            fxCtx.restore();
           }
-          // Expanding dust/debris cloud
-          const dustA=Math.max(0,.65-pf*.020);
-          const r2=pf*22+30;
-          if(dustA>0){
-            const rg=fxCtx.createRadialGradient(impSc[0],impSc[1],0,impSc[0],impSc[1],r2);
-            rg.addColorStop(0,`rgba(220,170,90,${dustA})`);
-            rg.addColorStop(.4,`rgba(160,110,55,${dustA*.6})`);
-            rg.addColorStop(1,'rgba(100,70,30,0)');
-            fxCtx.fillStyle=rg;fxCtx.beginPath();fxCtx.arc(impSc[0],impSc[1],r2,0,Math.PI*2);fxCtx.fill();
-          }
-          // Debris particles
-          if(pf<50){const seed=pf*1.618;
-            for(let i=0;i<16;i++){
-              const ang=i/16*Math.PI*2+pf*.05;
-              const pr=pf*(8+i*4);const pa=Math.max(0,.7-pf*.018);
-              if(pa<=0)continue;
-              const px2=impSc[0]+Math.cos(ang)*pr,py2=impSc[1]+Math.sin(ang)*pr*.55;
-              fxCtx.fillStyle=`rgba(200,140,60,${pa})`;
-              fxCtx.beginPath();fxCtx.arc(px2,py2,2+i*.15,0,Math.PI*2);fxCtx.fill();
-            }
-          }
+        }
+
+                // Molten crater glow        // Molten crater glow — orange heat radiating from impact point
+        if(pf<130){
+          const gA=Math.max(0,.82-pf*.0065);
+          const gR=d.ir*(W/N)*1.1;
+          const cg=fxCtx.createRadialGradient(isx,isy,0,isx,isy,gR);
+          cg.addColorStop(0,`rgba(255,220,60,${gA})`);
+          cg.addColorStop(.4,`rgba(255,110,20,${(gA*.65).toFixed(3)})`);
+          cg.addColorStop(1,'rgba(180,40,0,0)');
+          fxCtx.fillStyle=cg;fxCtx.beginPath();fxCtx.arc(isx,isy,gR,0,Math.PI*2);fxCtx.fill();
+        }
+
+        // Settling dust cloud expanding outward
+        const dA=Math.max(0,.55-pf*.0042);
+        const dR=pf*16+d.ir*5;
+        if(dA>0){
+          const dg=fxCtx.createRadialGradient(isx,isy,d.ir*3,isx,isy,dR);
+          dg.addColorStop(0,`rgba(155,110,60,${dA*.55})`);
+          dg.addColorStop(.5,`rgba(125,88,48,${dA*.38})`);
+          dg.addColorStop(1,'rgba(90,60,32,0)');
+          fxCtx.fillStyle=dg;fxCtx.beginPath();fxCtx.arc(isx,isy,dR,0,Math.PI*2);fxCtx.fill();
         }
       }
       break;
